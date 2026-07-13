@@ -60,6 +60,14 @@ CREATE TABLE IF NOT EXISTS budgets (
   monthly_limit REAL NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS categories (
+  name TEXT PRIMARY KEY,
+  icon TEXT DEFAULT '🏷️',
+  color TEXT,                      -- NULL for built-ins (they use theme CSS slots)
+  is_builtin INTEGER DEFAULT 0,
+  position INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS rules (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   keyword TEXT NOT NULL,

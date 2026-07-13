@@ -4,7 +4,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import db from './db.js';
-import { CATEGORIES, recategorizeAuto } from './categorizer.js';
+import { getCategories, categoryNames, isCategory, recategorizeAuto } from './categorizer.js';
 import { seedDemoData, clearDemoData } from './demo.js';
 import * as plaid from './plaid.js';
 import { authGuard, registerAuthRoutes, authEnabled } from './auth.js';
@@ -34,7 +34,8 @@ app.get('/api/status', (req, res) => {
     authEnabled: authEnabled(),
     transactions: txnCount,
     accounts: accountCount,
-    categories: CATEGORIES,
+    categories: categoryNames(),
+    categoryMeta: getCategories(),
   });
 });
 
@@ -111,7 +112,7 @@ app.post('/api/transactions', (req, res) => {
   if (!Number.isFinite(amt) || amt === 0) return res.status(400).json({ error: 'Invalid amount' });
   const desc = String(name || '').trim();
   if (!desc) return res.status(400).json({ error: 'Description required' });
-  if (!CATEGORIES.includes(category)) return res.status(400).json({ error: 'Unknown category' });
+  if (!isCategory(category)) return res.status(400).json({ error: 'Unknown category' });
 
   const id = `manual-${crypto.randomUUID()}`;
   db.prepare(`INSERT INTO transactions
@@ -132,7 +133,7 @@ app.delete('/api/transactions/:id', (req, res) => {
 
 app.patch('/api/transactions/:id', (req, res) => {
   const { category, applyToSimilar } = req.body;
-  if (!CATEGORIES.includes(category)) return res.status(400).json({ error: 'Unknown category' });
+  if (!isCategory(category)) return res.status(400).json({ error: 'Unknown category' });
 
   const txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(req.params.id);
   if (!txn) return res.status(404).json({ error: 'Not found' });
@@ -171,7 +172,7 @@ app.get('/api/budgets', (req, res) => {
 
 app.put('/api/budgets/:category', (req, res) => {
   const category = req.params.category;
-  if (!CATEGORIES.includes(category)) return res.status(400).json({ error: 'Unknown category' });
+  if (!isCategory(category)) return res.status(400).json({ error: 'Unknown category' });
   const limit = Number(req.body.monthly_limit);
   if (!Number.isFinite(limit) || limit < 0) return res.status(400).json({ error: 'Invalid limit' });
   if (limit === 0) db.prepare('DELETE FROM budgets WHERE category = ?').run(category);
@@ -189,6 +190,41 @@ app.get('/api/accounts', (req, res) => {
     ORDER BY a.is_demo, a.institution`).all();
   // Never expose access tokens to the client.
   res.json({ accounts });
+});
+
+// ---------- categories ----------
+// Colors for custom categories: mid-lightness hues distinct from the built-in
+// theme slots, readable on both light and dark surfaces.
+const CUSTOM_COLORS = ['#12908e', '#a3663a', '#6b8f1f', '#64748b', '#c2445f', '#7d3ac1'];
+
+app.get('/api/categories', (req, res) => {
+  res.json({ categories: getCategories() });
+});
+
+app.post('/api/categories', (req, res) => {
+  const name = String(req.body?.name || '').trim();
+  const icon = String(req.body?.icon || '').trim().slice(0, 8) || '🏷️';
+  if (name.length < 1 || name.length > 30) return res.status(400).json({ error: 'Name must be 1–30 characters' });
+  if (db.prepare('SELECT 1 FROM categories WHERE lower(name) = lower(?)').get(name)) {
+    return res.status(400).json({ error: 'That category already exists' });
+  }
+  const customCount = db.prepare('SELECT COUNT(*) c FROM categories WHERE is_builtin = 0').get().c;
+  const color = CUSTOM_COLORS[customCount % CUSTOM_COLORS.length];
+  db.prepare('INSERT INTO categories (name, icon, color, is_builtin, position) VALUES (?, ?, ?, 0, ?)')
+    .run(name, icon, color, 10 + customCount);
+  res.json({ ok: true, name, icon, color });
+});
+
+app.delete('/api/categories/:name', (req, res) => {
+  const cat = db.prepare('SELECT * FROM categories WHERE name = ?').get(req.params.name);
+  if (!cat) return res.status(404).json({ error: 'Not found' });
+  if (cat.is_builtin) return res.status(400).json({ error: 'Built-in categories cannot be deleted' });
+  db.prepare("UPDATE transactions SET category = 'Other', category_source = 'auto' WHERE category = ?").run(cat.name);
+  db.prepare('DELETE FROM budgets WHERE category = ?').run(cat.name);
+  db.prepare('DELETE FROM rules WHERE category = ?').run(cat.name);
+  db.prepare('DELETE FROM categories WHERE name = ?').run(cat.name);
+  recategorizeAuto(); // re-derive the orphaned transactions from Plaid data + remaining rules
+  res.json({ ok: true });
 });
 
 // ---------- rules ----------

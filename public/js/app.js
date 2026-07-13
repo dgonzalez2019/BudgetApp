@@ -14,14 +14,16 @@ const CAT_META = {
   'Income':            { slot: 'var(--cat-income)', icon: '💵' },
   'Other':             { slot: 'var(--cat-other)', icon: '📦' },
 };
-const catColor = (c) => CAT_META[c]?.slot || 'var(--cat-other)';
-const catIcon = (c) => CAT_META[c]?.icon || '📦';
+const catColor = (c) => CAT_META[c]?.slot || state.catMeta[c]?.color || 'var(--cat-other)';
+const catIcon = (c) => CAT_META[c]?.icon || state.catMeta[c]?.icon || '🏷️';
+const isCustomCat = (c) => Boolean(state.catMeta[c]) && !CAT_META[c];
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
 const state = {
   categories: Object.keys(CAT_META),
+  catMeta: {},   // name -> {icon, color, custom} for user-created categories
   range: 'this-month',
   txnFilters: { q: '', category: '', account: '', offset: 0, limit: 50 },
   txnTotal: 0,
@@ -425,6 +427,19 @@ $('#txn-more').addEventListener('click', () => {
 /* ---------------- recategorize modal ---------------- */
 function openCategoryModal(txn) {
   const modal = $('#cat-modal');
+  const applyCategory = async (c) => {
+    try {
+      const applyToSimilar = $('#cat-apply-similar').checked;
+      const res = await api(`/api/transactions/${encodeURIComponent(txn.id)}`, {
+        method: 'PATCH', body: { category: c, applyToSimilar },
+      });
+      modal.classList.add('hidden');
+      toast(res.similar > 0 ? `Recategorized, plus ${res.similar} similar transaction${res.similar === 1 ? '' : 's'}` : 'Category updated');
+      loadTransactions(true);
+    } catch (err) {
+      toast(err.message, '⚠️');
+    }
+  };
   $('#cat-modal-merchant').textContent = `${txn.merchant_name || txn.name} · ${fmtUSD(Math.abs(txn.amount), { cents: true })}`;
   const opts = $('#cat-modal-options');
   opts.replaceChildren();
@@ -432,21 +447,18 @@ function openCategoryModal(txn) {
     const chip = document.createElement('button');
     chip.className = 'chip' + (txn.category === c ? ' active' : '');
     chip.textContent = `${catIcon(c)} ${c}`;
-    chip.addEventListener('click', async () => {
-      try {
-        const applyToSimilar = $('#cat-apply-similar').checked;
-        const res = await api(`/api/transactions/${encodeURIComponent(txn.id)}`, {
-          method: 'PATCH', body: { category: c, applyToSimilar },
-        });
-        modal.classList.add('hidden');
-        toast(res.similar > 0 ? `Recategorized, plus ${res.similar} similar transaction${res.similar === 1 ? '' : 's'}` : 'Category updated');
-        loadTransactions(true);
-      } catch (err) {
-        toast(err.message, '⚠️');
-      }
-    });
+    chip.addEventListener('click', () => applyCategory(c));
     opts.appendChild(chip);
   }
+  // create a category on the fly and file this transaction under it
+  const newChip = document.createElement('button');
+  newChip.className = 'chip';
+  newChip.textContent = '＋ New category';
+  newChip.addEventListener('click', () => {
+    modal.classList.add('hidden');
+    openNewCategoryModal((name) => applyCategory(name));
+  });
+  opts.appendChild(newChip);
   // manually added entries can be removed
   const actions = $('#cat-modal .modal-actions');
   actions.querySelector('.delete-txn')?.remove();
@@ -548,6 +560,59 @@ $('#add-form').addEventListener('submit', async (e) => {
   }
 });
 
+/* ---------------- custom categories ---------------- */
+function applyCategoryMeta(s) {
+  if (s.categories?.length) state.categories = s.categories;
+  state.catMeta = {};
+  for (const c of s.categoryMeta || []) {
+    if (!c.is_builtin) state.catMeta[c.name] = { icon: c.icon, color: c.color };
+  }
+}
+async function refreshCategories() {
+  applyCategoryMeta(await api('/api/status'));
+}
+
+let newcatOnCreate = null;
+function openNewCategoryModal(onCreate) {
+  newcatOnCreate = onCreate || null;
+  $('#newcat-name').value = '';
+  $('#newcat-icon').value = '';
+  $('#newcat-modal').classList.remove('hidden');
+  $('#newcat-name').focus();
+}
+$('#newcat-cancel').addEventListener('click', () => $('#newcat-modal').classList.add('hidden'));
+$('#newcat-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) $('#newcat-modal').classList.add('hidden');
+});
+$('#newcat-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const res = await api('/api/categories', {
+      method: 'POST',
+      body: { name: $('#newcat-name').value.trim(), icon: $('#newcat-icon').value.trim() },
+    });
+    await refreshCategories();
+    $('#newcat-modal').classList.add('hidden');
+    toast(`Category "${res.name}" created`);
+    newcatOnCreate?.(res.name);
+    newcatOnCreate = null;
+  } catch (err) {
+    toast(err.message, '⚠️');
+  }
+});
+
+async function deleteCategory(name) {
+  if (!confirm(`Delete the "${name}" category? Its transactions move back to automatic categories.`)) return;
+  try {
+    await api(`/api/categories/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    await refreshCategories();
+    toast(`Category "${name}" deleted`);
+    loadBudgets();
+  } catch (err) {
+    toast(err.message, '⚠️');
+  }
+}
+
 /* ================= BUDGETS ================= */
 async function loadBudgets() {
   const { budgets, unbudgetedSpend } = await api('/api/budgets');
@@ -610,6 +675,15 @@ function budgetCard(b) {
   name.textContent = `${catIcon(b.category)} ${b.category}`;
   const edit = document.createElement('div');
   edit.className = 'budget-edit';
+  if (isCustomCat(b.category)) {
+    const del = document.createElement('button');
+    del.className = 'text-btn';
+    del.textContent = '✕';
+    del.title = `Delete the ${b.category} category`;
+    del.setAttribute('aria-label', `Delete the ${b.category} category`);
+    del.addEventListener('click', () => deleteCategory(b.category));
+    edit.appendChild(del);
+  }
   const input = document.createElement('input');
   input.type = 'number';
   input.min = '0';
@@ -848,8 +922,9 @@ $('#logout-btn').addEventListener('click', async () => {
 
 /* ---------------- boot ---------------- */
 $$('#range-filters .chip').find((c) => c.dataset.range === state.range)?.classList.add('active');
+$('#newcat-btn').addEventListener('click', () => openNewCategoryModal(() => loadBudgets()));
 api('/api/status').then((s) => {
-  if (s.categories?.length) state.categories = s.categories;
+  applyCategoryMeta(s);
   state.plaidConfigured = s.plaidConfigured;
   $('#logout-btn').classList.toggle('hidden', !s.authEnabled);
 });

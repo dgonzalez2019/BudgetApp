@@ -1,19 +1,34 @@
 import db from './db.js';
 
-// The app's fixed category set. Order matters: it is the chart slot order.
-export const CATEGORIES = [
-  'Groceries',
-  'Food & Dining',
-  'Shopping',
-  'Transportation',
-  'Bills & Utilities',
-  'Entertainment',
-  'Health & Wellness',
-  'Travel',
-  'Transfers',
-  'Income',
-  'Other',
+// Built-in categories. Position is the display/chart slot order; customs sort
+// after Travel (position 10+) and before Transfers/Income/Other.
+const BUILTIN_CATEGORIES = [
+  ['Groceries', '🛒', 1],
+  ['Food & Dining', '🍜', 2],
+  ['Shopping', '🛍️', 3],
+  ['Transportation', '🚗', 4],
+  ['Bills & Utilities', '💡', 5],
+  ['Entertainment', '🎬', 6],
+  ['Health & Wellness', '💊', 7],
+  ['Travel', '✈️', 8],
+  ['Transfers', '🔁', 90],
+  ['Income', '💵', 91],
+  ['Other', '📦', 92],
 ];
+{
+  const seed = db.prepare('INSERT OR IGNORE INTO categories (name, icon, color, is_builtin, position) VALUES (?, ?, NULL, 1, ?)');
+  for (const [name, icon, position] of BUILTIN_CATEGORIES) seed.run(name, icon, position);
+}
+
+export function getCategories() {
+  return db.prepare('SELECT name, icon, color, is_builtin, position FROM categories ORDER BY position, name').all();
+}
+export function categoryNames() {
+  return getCategories().map((c) => c.name);
+}
+export function isCategory(name) {
+  return Boolean(db.prepare('SELECT 1 FROM categories WHERE name = ?').get(name));
+}
 
 // Plaid personal_finance_category.primary -> app category
 const PLAID_PFC_MAP = {

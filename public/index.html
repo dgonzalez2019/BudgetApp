@@ -178,6 +178,9 @@
             <h1>Budgets</h1>
             <p class="subtitle" id="budget-subtitle">Monthly limits by category</p>
           </div>
+          <div class="filter-row">
+            <button class="ghost-btn" id="newcat-btn">+ New category</button>
+          </div>
         </header>
         <div class="card budget-summary" id="budget-summary"></div>
         <div class="budget-grid" id="budget-list"></div>
@@ -260,6 +263,28 @@
         <div class="modal-actions">
           <button type="button" class="ghost-btn" id="add-cancel">Cancel</button>
           <button type="submit" class="primary-btn">Add transaction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- New category -->
+  <div class="modal-backdrop hidden" id="newcat-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="newcat-title">
+      <h3 id="newcat-title">New category</h3>
+      <p class="muted">Custom categories work everywhere — filters, budgets, and auto-rules.</p>
+      <form id="newcat-form">
+        <div class="form-grid">
+          <label class="form-wide">Name
+            <input type="text" id="newcat-name" class="select" maxlength="30" placeholder="e.g. Pets" required>
+          </label>
+          <label>Icon (emoji, optional)
+            <input type="text" id="newcat-icon" class="select" maxlength="4" placeholder="🐶">
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="ghost-btn" id="newcat-cancel">Cancel</button>
+          <button type="submit" class="primary-btn">Create category</button>
         </div>
       </form>
     </div>
