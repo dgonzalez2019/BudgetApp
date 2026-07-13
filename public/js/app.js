@@ -664,26 +664,52 @@ async function openPlaidLink() {
   }
   try {
     const { link_token } = await api('/api/plaid/link_token', { method: 'POST' });
-    const handler = Plaid.create({
-      token: link_token,
-      onSuccess: async (public_token, metadata) => {
-        toast('Linking account…', '⏳');
-        try {
-          const res = await api('/api/plaid/exchange', {
-            method: 'POST',
-            body: { public_token, institution_name: metadata.institution?.name },
-          });
-          toast(`Linked ${metadata.institution?.name || 'account'} — imported ${res.transactions} transactions`);
-          loadAccounts();
-        } catch (err) { toast(err.message, '⚠️'); }
-      },
-      onExit: (err) => { if (err) toast(err.display_message || 'Link exited', 'ℹ️'); },
-    });
-    handler.open();
+    // OAuth banks (Amex, First Horizon, …) leave the page and come back;
+    // the token must survive that round-trip to resume the flow.
+    localStorage.setItem('plaid_link_token', link_token);
+    launchPlaidLink(link_token, null);
   } catch (err) {
     toast(err.message, '⚠️');
   }
 }
+
+function launchPlaidLink(token, receivedRedirectUri) {
+  const handler = Plaid.create({
+    token,
+    receivedRedirectUri: receivedRedirectUri || undefined,
+    onSuccess: async (public_token, metadata) => {
+      localStorage.removeItem('plaid_link_token');
+      toast('Linking account…', '⏳');
+      try {
+        const res = await api('/api/plaid/exchange', {
+          method: 'POST',
+          body: { public_token, institution_name: metadata.institution?.name },
+        });
+        toast(`Linked ${metadata.institution?.name || 'account'} — imported ${res.transactions} transactions`);
+        loadAccounts();
+      } catch (err) { toast(err.message, '⚠️'); }
+    },
+    onExit: (err) => {
+      if (err) toast(err.display_message || err.error_message || 'Link exited', 'ℹ️');
+    },
+  });
+  handler.open();
+}
+
+// Returning from a bank's OAuth approval page: resume Link where it left off.
+(function resumeOAuthLink() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('oauth_state_id')) return;
+  const receivedRedirectUri = window.location.href;
+  history.replaceState({}, '', window.location.pathname);
+  const token = localStorage.getItem('plaid_link_token');
+  if (!token) {
+    toast('Bank sign-in expired — tap “Link account” to try again', 'ℹ️');
+    return;
+  }
+  switchView('accounts');
+  launchPlaidLink(token, receivedRedirectUri);
+})();
 $('#link-btn').addEventListener('click', openPlaidLink);
 $('#empty-link-btn').addEventListener('click', () => { switchView('accounts'); openPlaidLink(); });
 

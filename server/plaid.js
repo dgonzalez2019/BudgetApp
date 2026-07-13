@@ -26,13 +26,17 @@ function getClient() {
 
 /** Create a Link token so the browser can open Plaid Link (used to connect AMEX, First Horizon, etc.). */
 export async function createLinkToken() {
-  const res = await getClient().linkTokenCreate({
+  const req = {
     user: { client_user_id: 'budgetapp-user' },
     client_name: 'BudgetApp',
     products: ['transactions'],
     country_codes: ['US'],
     language: 'en',
-  });
+  };
+  // OAuth banks (Amex, First Horizon, Chase, …) need a registered return URL.
+  // Must exactly match an Allowed Redirect URI in the Plaid dashboard.
+  if (process.env.PLAID_REDIRECT_URI) req.redirect_uri = process.env.PLAID_REDIRECT_URI;
+  const res = await getClient().linkTokenCreate(req);
   return res.data.link_token;
 }
 

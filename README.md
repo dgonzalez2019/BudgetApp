@@ -37,6 +37,15 @@ Banks don't let apps read your transactions directly — the industry-standard b
 4. Restart the app (`npm start`), open the **Accounts** tab, and click **+ Link account**.
 5. Search for *American Express* or *First Horizon Bank* in the Plaid window, log in, and your transactions flow in. Use **Sync now** anytime to pull the latest.
 
+### OAuth banks (Amex, First Horizon, Chase, …)
+
+Many major institutions use OAuth: Plaid sends you to the bank's own site to approve, then returns you to the app. Two extra steps make that work:
+
+1. In the Plaid dashboard, open **Developers → API → Allowed redirect URIs** and add your app's exact URL with a trailing slash, e.g. `https://your-app.up.railway.app/` (or `http://localhost:3000/` for local use).
+2. Set `PLAID_REDIRECT_URI` to that **identical** string in your environment and restart/redeploy.
+
+Without both, OAuth institutions fail with "link exited" or won't be selectable at all.
+
 ### Plaid environments
 
 | `PLAID_ENV` | What it does |
