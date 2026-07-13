@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>BudgetApp — Your money, at a glance</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span></div>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">💸</div>
+        <div class="brand-name">BudgetApp</div>
+      </div>
+      <nav class="nav" role="tablist" aria-label="Sections">
+        <button class="nav-item active" data-view="dashboard" role="tab" aria-selected="true">
+          <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" data-view="transactions" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg>
+          Transactions
+        </button>
+        <button class="nav-item" data-view="budgets" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10h-10V2z"/><path d="M14 0v8h8a8 8 0 0 0-8-8z" opacity=".55"/></svg>
+          Budgets
+        </button>
+        <button class="nav-item" data-view="accounts" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24"><path d="M12 2 2 8v2h20V8L12 2zM4 12v7h3v-7H4zm6.5 0v7h3v-7h-3zM17 12v7h3v-7h-3zM2 21h20v2H2v-2z"/></svg>
+          Accounts
+        </button>
+      </nav>
+      <div class="sidebar-foot">
+        <button id="theme-toggle" class="ghost-btn" title="Toggle light/dark theme">
+          <svg viewBox="0 0 24 24" class="icon-moon"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <svg viewBox="0 0 24 24" class="icon-sun"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4.2 4.2l2.2 2.2M17.6 17.6l2.2 2.2M1 12h3M20 12h3M4.2 19.8l2.2-2.2M17.6 6.4l2.2-2.2" stroke-width="2" stroke-linecap="round" fill="none" stroke="currentColor"/></svg>
+          <span>Theme</span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <!-- ============ DASHBOARD ============ -->
+      <section class="view active" id="view-dashboard">
+        <header class="view-header">
+          <div>
+            <h1>Dashboard</h1>
+            <p class="subtitle" id="dash-subtitle">Your spending at a glance</p>
+          </div>
+          <div class="filter-row" id="range-filters" role="group" aria-label="Date range">
+            <button class="chip" data-range="this-month">This month</button>
+            <button class="chip" data-range="last-month">Last month</button>
+            <button class="chip" data-range="3m">3 months</button>
+            <button class="chip" data-range="6m">6 months</button>
+            <button class="chip" data-range="ytd">Year to date</button>
+          </div>
+        </header>
+
+        <div class="empty-state hidden" id="dash-empty">
+          <div class="empty-art">🌱</div>
+          <h2>Welcome to BudgetApp</h2>
+          <p>Link your Amex card and First Horizon account to pull in transactions automatically — or explore with demo data first.</p>
+          <div class="empty-actions">
+            <button class="primary-btn" id="empty-link-btn">Link an account</button>
+            <button class="ghost-btn" id="empty-demo-btn">Load demo data</button>
+          </div>
+        </div>
+
+        <div id="dash-content">
+          <div class="stat-grid">
+            <div class="card stat-tile">
+              <div class="stat-label">Spent</div>
+              <div class="stat-value" id="stat-spent" data-prefix="$">$0</div>
+              <div class="stat-delta" id="stat-spent-delta"></div>
+            </div>
+            <div class="card stat-tile">
+              <div class="stat-label">Income</div>
+              <div class="stat-value" id="stat-income">$0</div>
+              <div class="stat-delta" id="stat-income-note"></div>
+            </div>
+            <div class="card stat-tile">
+              <div class="stat-label">Net</div>
+              <div class="stat-value" id="stat-net">$0</div>
+              <div class="stat-delta" id="stat-net-note"></div>
+            </div>
+            <div class="card stat-tile">
+              <div class="stat-label">Daily average</div>
+              <div class="stat-value" id="stat-daily">$0</div>
+              <div class="stat-delta" id="stat-daily-note"></div>
+            </div>
+          </div>
+
+          <div class="dash-grid">
+            <div class="card chart-card span-donut">
+              <div class="card-head">
+                <h2>Spending by category</h2>
+              </div>
+              <div class="donut-wrap">
+                <div id="donut-chart" class="donut-chart"></div>
+                <ul id="donut-legend" class="donut-legend"></ul>
+              </div>
+            </div>
+
+            <div class="card chart-card span-bars">
+              <div class="card-head">
+                <h2>Monthly spending vs income</h2>
+                <div class="legend" id="monthly-legend"></div>
+              </div>
+              <div id="monthly-chart" class="chart-body"></div>
+            </div>
+
+            <div class="card chart-card span-line">
+              <div class="card-head">
+                <h2>Daily spending</h2>
+              </div>
+              <div id="daily-chart" class="chart-body"></div>
+            </div>
+
+            <div class="card span-merchants">
+              <div class="card-head">
+                <h2>Top merchants</h2>
+              </div>
+              <ul id="top-merchants" class="merchant-list"></ul>
+            </div>
+
+            <div class="card span-recent">
+              <div class="card-head">
+                <h2>Recent transactions</h2>
+                <button class="text-btn" data-goto="transactions">View all →</button>
+              </div>
+              <div id="recent-txns"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ TRANSACTIONS ============ -->
+      <section class="view" id="view-transactions">
+        <header class="view-header">
+          <div>
+            <h1>Transactions</h1>
+            <p class="subtitle" id="txn-count-label"></p>
+          </div>
+          <div class="filter-row">
+            <div class="search-box">
+              <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+              <input type="search" id="txn-search" placeholder="Search merchants…" autocomplete="off">
+            </div>
+            <select id="txn-account-filter" class="select"><option value="">All accounts</option></select>
+          </div>
+        </header>
+        <div class="cat-chips" id="txn-cat-chips"></div>
+        <div class="card table-card">
+          <table class="txn-table" id="txn-table">
+            <thead><tr><th>Date</th><th>Merchant</th><th>Category</th><th>Account</th><th class="num">Amount</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="table-foot">
+            <button class="ghost-btn" id="txn-more">Load more</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ BUDGETS ============ -->
+      <section class="view" id="view-budgets">
+        <header class="view-header">
+          <div>
+            <h1>Budgets</h1>
+            <p class="subtitle" id="budget-subtitle">Monthly limits by category</p>
+          </div>
+        </header>
+        <div class="card budget-summary" id="budget-summary"></div>
+        <div class="budget-grid" id="budget-list"></div>
+      </section>
+
+      <!-- ============ ACCOUNTS ============ -->
+      <section class="view" id="view-accounts">
+        <header class="view-header">
+          <div>
+            <h1>Accounts</h1>
+            <p class="subtitle">Linked cards and banks</p>
+          </div>
+          <div class="filter-row">
+            <button class="ghost-btn" id="sync-btn">
+              <svg viewBox="0 0 24 24"><path d="M17.65 6.35A8 8 0 1 0 19.73 14h-2.08a6 6 0 1 1-1.42-6.23L13 11h7V4l-2.35 2.35z"/></svg>
+              Sync now
+            </button>
+            <button class="primary-btn" id="link-btn">+ Link account</button>
+          </div>
+        </header>
+        <div class="plaid-note card" id="plaid-note"></div>
+        <div class="account-grid" id="account-list"></div>
+        <div class="card demo-card">
+          <div>
+            <h3>Demo data</h3>
+            <p class="muted">Explore the app with 6 months of realistic sample data for an Amex Gold card and a First Horizon checking account.</p>
+          </div>
+          <div class="demo-actions">
+            <button class="ghost-btn" id="demo-seed-btn">Load demo data</button>
+            <button class="ghost-btn danger" id="demo-clear-btn">Clear demo data</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Recategorize popover -->
+  <div class="modal-backdrop hidden" id="cat-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title">
+      <h3 id="cat-modal-title">Change category</h3>
+      <p class="muted" id="cat-modal-merchant"></p>
+      <div class="cat-options" id="cat-modal-options"></div>
+      <label class="check-row">
+        <input type="checkbox" id="cat-apply-similar" checked>
+        <span>Always use this category for this merchant</span>
+      </label>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="cat-modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+  <div id="chart-tooltip" class="chart-tooltip hidden" role="status"></div>
+
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
