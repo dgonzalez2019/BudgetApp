@@ -6,10 +6,16 @@ import db from './db.js';
 import { CATEGORIES, recategorizeAuto } from './categorizer.js';
 import { seedDemoData, clearDemoData } from './demo.js';
 import * as plaid from './plaid.js';
+import { authGuard, registerAuthRoutes, authEnabled } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.set('trust proxy', 1); // secure cookies behind cloud HTTPS proxies
 app.use(express.json());
+
+app.get('/healthz', (req, res) => res.json({ ok: true }));
+registerAuthRoutes(app, path.join(__dirname, '..', 'public', 'login.html'));
+app.use(authGuard);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 const asyncRoute = (fn) => (req, res) => fn(req, res).catch((err) => {
@@ -24,6 +30,7 @@ app.get('/api/status', (req, res) => {
   res.json({
     plaidConfigured: plaid.plaidConfigured(),
     plaidEnv: process.env.PLAID_ENV || 'sandbox',
+    authEnabled: authEnabled(),
     transactions: txnCount,
     accounts: accountCount,
     categories: CATEGORIES,
@@ -198,7 +205,8 @@ app.delete('/api/items/:id', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n  BudgetApp running at http://localhost:${PORT}`);
-  console.log(`  Plaid: ${plaid.plaidConfigured() ? `configured (${process.env.PLAID_ENV || 'sandbox'})` : 'not configured — demo mode available'}\n`);
+  console.log(`  Plaid: ${plaid.plaidConfigured() ? `configured (${process.env.PLAID_ENV || 'sandbox'})` : 'not configured — demo mode available'}`);
+  console.log(`  Auth: ${authEnabled() ? 'password required' : 'open (local mode — set APP_PASSWORD before hosting publicly)'}\n`);
 });
 
 function rangeParams(req) {

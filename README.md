@@ -44,6 +44,34 @@ Banks don't let apps read your transactions directly — the industry-standard b
 | `sandbox` | Fake test banks (username `user_good`, password `pass_good`) — free, instant, great for trying the flow |
 | `production` | Your real Amex + First Horizon accounts. Request Production access in the Plaid dashboard (free for small personal use under their Limited Production program) |
 
+## Hosting it on the internet (use it from your phone, anywhere)
+
+The app ships with a password gate and a Dockerfile so it can run on any cloud host. **Never host it publicly without setting `APP_PASSWORD`** — that's what turns the login screen on.
+
+### Deploy on Railway (recommended, ~10 minutes)
+
+1. Sign up at [railway.com](https://railway.com) with your GitHub account (Hobby plan, $5/mo).
+2. Click **New Project → Deploy from GitHub repo** and pick this repository. Railway detects the Dockerfile and builds automatically.
+3. Give the database a permanent home: right-click the service → **Attach volume**, mount path `/data`.
+4. In the service's **Variables** tab add:
+   | Variable | Value |
+   |---|---|
+   | `APP_PASSWORD` | a strong password you'll use to sign in |
+   | `SESSION_SECRET` | any long random string (`openssl rand -hex 32`) |
+   | `DATA_DIR` | `/data` |
+   | `PLAID_CLIENT_ID` / `PLAID_SECRET` / `PLAID_ENV` | your Plaid keys (optional, for bank sync) |
+5. In **Settings → Networking** click **Generate Domain**. You'll get a URL like `budgetapp-production.up.railway.app`.
+6. Open that URL on your phone, sign in, and use Share → **Add to Home Screen** for an app-like icon.
+
+Any Docker-capable host works the same way (Render, Fly.io, a VPS) — the app needs one persistent directory for `DATA_DIR` and the environment variables above.
+
+### Security notes
+
+- Sessions are signed `httpOnly` cookies (30-day expiry); sign-in attempts are throttled to 5 per 15 minutes per IP.
+- Changing `APP_PASSWORD` signs everyone out (unless you set `SESSION_SECRET`, which keeps sessions across password changes).
+- Cloud hosts terminate HTTPS for you; the cookie is marked `Secure` automatically behind an HTTPS proxy.
+- Without `APP_PASSWORD` set, the app runs open — fine on your own computer, never on the internet.
+
 ## How categorization works
 
 1. **Your rules win** — when you recategorize a transaction and tick *"Always use this category for this merchant"*, a rule is saved and applied to past and future matches.

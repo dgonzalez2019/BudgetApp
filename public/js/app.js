@@ -35,6 +35,10 @@ async function api(path, opts = {}) {
     ...opts,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
+  if (res.status === 401) {
+    window.location.href = '/login';
+    return new Promise(() => {}); // page is navigating away
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
@@ -711,10 +715,17 @@ $('#demo-clear-btn').addEventListener('click', async () => {
   loadAccounts();
 });
 
+/* ---------------- sign out ---------------- */
+$('#logout-btn').addEventListener('click', async () => {
+  await api('/api/logout', { method: 'POST' });
+  window.location.href = '/login';
+});
+
 /* ---------------- boot ---------------- */
 $$('#range-filters .chip').find((c) => c.dataset.range === state.range)?.classList.add('active');
 api('/api/status').then((s) => {
   if (s.categories?.length) state.categories = s.categories;
   state.plaidConfigured = s.plaidConfigured;
+  $('#logout-btn').classList.toggle('hidden', !s.authEnabled);
 });
 loadDashboard();

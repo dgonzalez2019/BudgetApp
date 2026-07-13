@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>Sign in — BudgetApp</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>">
+  <style>
+    :root {
+      --page: #f9f9f7; --surface: rgba(252,252,251,.78); --ink: #0b0b0b; --ink-2: #52514e;
+      --muted: #898781; --border: rgba(11,11,11,.10); --accent: #2a78d6; --bad: #a52c2c;
+      --orb-a: rgba(42,120,214,.16); --orb-b: rgba(27,175,122,.13); --orb-c: rgba(74,58,167,.10);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: #0d0d0d; --surface: rgba(26,26,25,.78); --ink: #fff; --ink-2: #c3c2b7;
+        --border: rgba(255,255,255,.10); --accent: #3987e5; --bad: #e66767;
+        --orb-a: rgba(57,135,229,.14); --orb-b: rgba(25,158,112,.11); --orb-c: rgba(144,133,233,.09);
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--page); color: var(--ink);
+      min-height: 100vh; display: grid; place-items: center; overflow: hidden;
+    }
+    .orb { position: fixed; border-radius: 50%; filter: blur(90px); animation: drift 28s ease-in-out infinite alternate; pointer-events: none; }
+    .a { width: 55vmax; height: 55vmax; top: -22vmax; left: -12vmax; background: var(--orb-a); }
+    .b { width: 44vmax; height: 44vmax; bottom: -18vmax; right: -10vmax; background: var(--orb-b); animation-duration: 34s; }
+    .c { width: 36vmax; height: 36vmax; top: 34%; left: 58%; background: var(--orb-c); animation-duration: 40s; }
+    @keyframes drift { to { transform: translate(6vmax, 4vmax) scale(1.12); } }
+    @media (prefers-reduced-motion: reduce) { .orb { animation: none; } }
+    .card {
+      position: relative; width: min(380px, calc(100vw - 32px));
+      background: var(--surface); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border); border-radius: 20px;
+      box-shadow: 0 1px 2px rgba(11,11,11,.05), 0 12px 32px rgba(11,11,11,.08);
+      padding: 34px 30px; text-align: center;
+      animation: in .35s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes in { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+    .mark { font-size: 40px; }
+    h1 { font-size: 20px; letter-spacing: -.02em; margin: 10px 0 4px; }
+    p { color: var(--muted); font-size: 13.5px; margin-bottom: 22px; }
+    input {
+      width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--page); color: var(--ink); font: inherit; font-size: 15px;
+      transition: border-color .15s;
+    }
+    input:focus { outline: none; border-color: var(--accent); }
+    button {
+      width: 100%; margin-top: 12px; padding: 12px; border: none; border-radius: 12px;
+      background: var(--accent); color: #fff; font: inherit; font-size: 14.5px; font-weight: 600;
+      cursor: pointer; transition: filter .15s, transform .1s;
+    }
+    button:hover { filter: brightness(1.08); }
+    button:active { transform: scale(.98); }
+    button:disabled { opacity: .6; cursor: default; }
+    .err { color: var(--bad); font-size: 13px; margin-top: 12px; min-height: 18px; }
+    .shake { animation: shake .4s; }
+    @keyframes shake { 20%,60% { transform: translateX(-7px); } 40%,80% { transform: translateX(7px); } }
+  </style>
+</head>
+<body>
+  <span class="orb a"></span><span class="orb b"></span><span class="orb c"></span>
+  <form class="card" id="form">
+    <div class="mark">💸</div>
+    <h1>BudgetApp</h1>
+    <p>Enter your password to see your money</p>
+    <input type="password" id="password" placeholder="Password" autocomplete="current-password" autofocus required>
+    <button type="submit" id="btn">Sign in</button>
+    <div class="err" id="err" role="alert"></div>
+  </form>
+  <script>
+    const form = document.getElementById('form');
+    const err = document.getElementById('err');
+    const btn = document.getElementById('btn');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.textContent = '';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: document.getElementById('password').value }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) { location.href = '/'; return; }
+        err.textContent = data.error || 'Sign-in failed';
+        form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake');
+      } catch {
+        err.textContent = 'Could not reach the server';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
