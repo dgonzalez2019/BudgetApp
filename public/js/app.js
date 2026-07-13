@@ -53,6 +53,7 @@ function rangeDates(key) {
   const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const startOfMonth = (offset = 0) => new Date(now.getFullYear(), now.getMonth() + offset, 1);
   switch (key) {
+    case 'mtd': return { start: iso(startOfMonth(0)), end: iso(now) };
     case 'last-month': return { start: iso(startOfMonth(-1)), end: iso(new Date(now.getFullYear(), now.getMonth(), 0)) };
     case '3m': return { start: iso(startOfMonth(-2)), end: iso(now) };
     case '6m': return { start: iso(startOfMonth(-5)), end: iso(now) };
@@ -62,7 +63,7 @@ function rangeDates(key) {
   }
 }
 const RANGE_LABELS = {
-  'this-month': 'the past month', 'last-month': 'last month',
+  'this-month': 'the past month', 'mtd': 'this month so far', 'last-month': 'last month',
   '3m': 'the last 3 months', '6m': 'the last 6 months', 'ytd': 'this year',
 };
 
@@ -163,11 +164,15 @@ async function loadDashboard() {
   $('#stat-daily-note').textContent = `across ${days} days`;
   $('#stat-net-note').textContent = ov.totals.income - ov.totals.spent >= 0 ? 'saving money 🎉' : 'spending exceeds income';
 
-  // rolling-month pace: the past month vs the month before it
+  // pace comparisons: rolling month vs the month before, or calendar
+  // month-to-date vs the same point last month
   const deltaEl = $('#stat-spent-delta');
-  if (state.range === 'this-month' && ov.monthToDate?.prevSpent > 0) {
-    const pct = ((ov.monthToDate.spent - ov.monthToDate.prevSpent) / ov.monthToDate.prevSpent) * 100;
-    deltaEl.textContent = `${pct >= 0 ? '+' : ''}${pct.toFixed(0)}% vs the month before`;
+  const pace = state.range === 'this-month' ? ov.monthToDate
+    : state.range === 'mtd' ? ov.calendarMtd : null;
+  if (pace?.prevSpent > 0) {
+    const pct = ((pace.spent - pace.prevSpent) / pace.prevSpent) * 100;
+    const vs = state.range === 'mtd' ? 'vs this point last month' : 'vs the month before';
+    deltaEl.textContent = `${pct >= 0 ? '+' : ''}${pct.toFixed(0)}% ${vs}`;
     deltaEl.className = 'stat-delta ' + (pct > 0 ? 'up-bad' : 'down-good');
   } else {
     deltaEl.textContent = '';

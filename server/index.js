@@ -87,7 +87,16 @@ app.get('/api/overview', (req, res) => {
     prevSpent: spentBetween.get(iso(shift(-2, 1)), iso(shift(-1))).s,
   };
 
-  res.json({ start, end, totals, byCategory, monthly, daily, topMerchants, monthToDate });
+  // Calendar pace: the 1st through today vs the 1st through this day last month.
+  const prevMonthDays = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+  const calendarMtd = {
+    spent: spentBetween.get(iso(new Date(now.getFullYear(), now.getMonth(), 1)), iso(now)).s,
+    prevSpent: spentBetween.get(
+      iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      iso(new Date(now.getFullYear(), now.getMonth() - 1, Math.min(now.getDate(), prevMonthDays)))).s,
+  };
+
+  res.json({ start, end, totals, byCategory, monthly, daily, topMerchants, monthToDate, calendarMtd });
 });
 
 // ---------- transactions ----------
