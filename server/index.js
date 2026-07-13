@@ -43,7 +43,7 @@ app.get('/api/overview', (req, res) => {
 
   const totals = db.prepare(`
     SELECT
-      COALESCE(SUM(CASE WHEN amount > 0 AND category != 'Income' THEN amount END), 0) AS spent,
+      COALESCE(SUM(CASE WHEN amount > 0 AND category NOT IN ('Income', 'Transfers') THEN amount END), 0) AS spent,
       COALESCE(-SUM(CASE WHEN category = 'Income' THEN amount END), 0) AS income,
       COUNT(*) AS count
     FROM transactions WHERE date >= ? AND date <= ?`).get(start, end);
@@ -51,27 +51,27 @@ app.get('/api/overview', (req, res) => {
   const byCategory = db.prepare(`
     SELECT category, SUM(amount) AS total, COUNT(*) AS count
     FROM transactions
-    WHERE date >= ? AND date <= ? AND amount > 0 AND category != 'Income'
+    WHERE date >= ? AND date <= ? AND amount > 0 AND category NOT IN ('Income', 'Transfers')
     GROUP BY category ORDER BY total DESC`).all(start, end);
 
   // Last 6 whole months of spending vs income, independent of the selected range.
   const monthly = db.prepare(`
     SELECT substr(date, 1, 7) AS month,
-      COALESCE(SUM(CASE WHEN amount > 0 AND category != 'Income' THEN amount END), 0) AS spent,
+      COALESCE(SUM(CASE WHEN amount > 0 AND category NOT IN ('Income', 'Transfers') THEN amount END), 0) AS spent,
       COALESCE(-SUM(CASE WHEN category = 'Income' THEN amount END), 0) AS income
     FROM transactions
     WHERE date >= date('now', 'start of month', '-5 months')
     GROUP BY month ORDER BY month`).all();
 
   const daily = db.prepare(`
-    SELECT date, COALESCE(SUM(CASE WHEN amount > 0 AND category != 'Income' THEN amount END), 0) AS spent
+    SELECT date, COALESCE(SUM(CASE WHEN amount > 0 AND category NOT IN ('Income', 'Transfers') THEN amount END), 0) AS spent
     FROM transactions WHERE date >= ? AND date <= ?
     GROUP BY date ORDER BY date`).all(start, end);
 
   const topMerchants = db.prepare(`
     SELECT COALESCE(merchant_name, name) AS merchant, SUM(amount) AS total, COUNT(*) AS count
     FROM transactions
-    WHERE date >= ? AND date <= ? AND amount > 0 AND category != 'Income'
+    WHERE date >= ? AND date <= ? AND amount > 0 AND category NOT IN ('Income', 'Transfers')
     GROUP BY merchant ORDER BY total DESC LIMIT 6`).all(start, end);
 
   res.json({ start, end, totals, byCategory, monthly, daily, topMerchants });
@@ -129,7 +129,7 @@ app.get('/api/budgets', (req, res) => {
   const monthStart = new Date().toISOString().slice(0, 8) + '01';
   const spent = db.prepare(`
     SELECT category, SUM(amount) AS total FROM transactions
-    WHERE date >= ? AND amount > 0 AND category != 'Income'
+    WHERE date >= ? AND amount > 0 AND category NOT IN ('Income', 'Transfers')
     GROUP BY category`).all(monthStart);
   const spentMap = Object.fromEntries(spent.map((s) => [s.category, s.total]));
   res.json({
@@ -201,6 +201,15 @@ app.delete('/api/items/:id', (req, res) => {
   plaid.removeItem(req.params.id);
   res.json({ ok: true });
 });
+
+// Re-derive categories for non-manual transactions so mapping improvements
+// (e.g. the Transfers category) apply to already-synced data.
+try {
+  const n = recategorizeAuto();
+  if (n > 0) console.log(`  Recategorized ${n} transactions with current rules`);
+} catch (err) {
+  console.error('Startup recategorization failed:', err.message);
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

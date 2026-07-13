@@ -10,6 +10,7 @@ export const CATEGORIES = [
   'Entertainment',
   'Health & Wellness',
   'Travel',
+  'Transfers',
   'Income',
   'Other',
 ];
@@ -25,13 +26,13 @@ const PLAID_PFC_MAP = {
   PERSONAL_CARE: 'Health & Wellness',
   TRAVEL: 'Travel',
   INCOME: 'Income',
-  TRANSFER_IN: 'Income',
+  TRANSFER_IN: 'Transfers',
+  TRANSFER_OUT: 'Transfers',
   LOAN_PAYMENTS: 'Bills & Utilities',
   GENERAL_SERVICES: 'Bills & Utilities',
   GOVERNMENT_AND_NON_PROFIT: 'Other',
   HOME_IMPROVEMENT: 'Shopping',
   BANK_FEES: 'Bills & Utilities',
-  TRANSFER_OUT: 'Other',
 };
 
 // Built-in merchant keyword rules, checked before Plaid's category.
@@ -66,6 +67,7 @@ const BUILTIN_RULES = [
   ['airline', 'Travel'], ['delta air', 'Travel'], ['united air', 'Travel'],
   ['southwest', 'Travel'], ['airbnb', 'Travel'], ['marriott', 'Travel'],
   ['hilton', 'Travel'], ['hotel', 'Travel'], ['expedia', 'Travel'],
+  ['transfer', 'Transfers'], ['xfer', 'Transfers'],
   ['payroll', 'Income'], ['direct dep', 'Income'], ['deposit', 'Income'],
 ];
 

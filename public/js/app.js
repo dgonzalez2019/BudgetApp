@@ -10,6 +10,7 @@ const CAT_META = {
   'Entertainment':     { slot: 'var(--cat-6)', icon: '🎬' },
   'Health & Wellness': { slot: 'var(--cat-7)', icon: '💊' },
   'Travel':            { slot: 'var(--cat-8)', icon: '✈️' },
+  'Transfers':         { slot: 'var(--cat-other)', icon: '🔁' },
   'Income':            { slot: 'var(--cat-income)', icon: '💵' },
   'Other':             { slot: 'var(--cat-other)', icon: '📦' },
 };
@@ -479,7 +480,8 @@ async function loadBudgets() {
   const budgeted = new Set(budgets.map((b) => b.category));
   for (const b of budgets) list.appendChild(budgetCard(b));
   // categories with spend but no budget, plus remaining categories — offer to set one
-  const spendable = state.categories.filter((c) => c !== 'Income' && !budgeted.has(c));
+  // (transfers and income aren't spending, so they can't be budgeted)
+  const spendable = state.categories.filter((c) => c !== 'Income' && c !== 'Transfers' && !budgeted.has(c));
   for (const c of spendable) {
     const spent = unbudgetedSpend.find((u) => u.category === c)?.total || 0;
     list.appendChild(budgetCard({ category: c, monthly_limit: 0, spent }));
