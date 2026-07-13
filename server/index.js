@@ -76,7 +76,18 @@ app.get('/api/overview', (req, res) => {
     WHERE date >= ? AND date <= ? AND amount > 0 AND category NOT IN ('Income', 'Transfers')
     GROUP BY merchant ORDER BY total DESC LIMIT 6`).all(start, end);
 
-  res.json({ start, end, totals, byCategory, monthly, daily, topMerchants });
+  // Rolling-month pace: the past month vs the month before it.
+  const now = new Date();
+  const spentBetween = db.prepare(`
+    SELECT COALESCE(SUM(CASE WHEN amount > 0 AND category NOT IN ('Income', 'Transfers') THEN amount END), 0) AS s
+    FROM transactions WHERE date >= ? AND date <= ?`);
+  const shift = (months, days = 0) => new Date(now.getFullYear(), now.getMonth() + months, now.getDate() + days);
+  const monthToDate = {
+    spent: spentBetween.get(iso(shift(-1, 1)), iso(now)).s,
+    prevSpent: spentBetween.get(iso(shift(-2, 1)), iso(shift(-1))).s,
+  };
+
+  res.json({ start, end, totals, byCategory, monthly, daily, topMerchants, monthToDate });
 });
 
 // ---------- transactions ----------

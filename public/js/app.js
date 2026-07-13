@@ -57,11 +57,12 @@ function rangeDates(key) {
     case '3m': return { start: iso(startOfMonth(-2)), end: iso(now) };
     case '6m': return { start: iso(startOfMonth(-5)), end: iso(now) };
     case 'ytd': return { start: `${now.getFullYear()}-01-01`, end: iso(now) };
-    default: return { start: iso(startOfMonth(0)), end: iso(now) };
+    // rolling month: the day after this date a month ago, through today
+    default: return { start: iso(new Date(now.getFullYear(), now.getMonth() - 1, now.getDate() + 1)), end: iso(now) };
   }
 }
 const RANGE_LABELS = {
-  'this-month': 'this month', 'last-month': 'last month',
+  'this-month': 'the past month', 'last-month': 'last month',
   '3m': 'the last 3 months', '6m': 'the last 6 months', 'ytd': 'this year',
 };
 
@@ -162,12 +163,11 @@ async function loadDashboard() {
   $('#stat-daily-note').textContent = `across ${days} days`;
   $('#stat-net-note').textContent = ov.totals.income - ov.totals.spent >= 0 ? 'saving money 🎉' : 'spending exceeds income';
 
-  // vs previous period delta on Spent
-  const prevSpent = comparableSpent(ov.monthly, state.range);
+  // rolling-month pace: the past month vs the month before it
   const deltaEl = $('#stat-spent-delta');
-  if (prevSpent != null && prevSpent > 0 && state.range === 'this-month') {
-    const pct = ((ov.totals.spent - prevSpent) / prevSpent) * 100;
-    deltaEl.textContent = `${pct >= 0 ? '+' : ''}${pct.toFixed(0)}% vs last month's total`;
+  if (state.range === 'this-month' && ov.monthToDate?.prevSpent > 0) {
+    const pct = ((ov.monthToDate.spent - ov.monthToDate.prevSpent) / ov.monthToDate.prevSpent) * 100;
+    deltaEl.textContent = `${pct >= 0 ? '+' : ''}${pct.toFixed(0)}% vs the month before`;
     deltaEl.className = 'stat-delta ' + (pct > 0 ? 'up-bad' : 'down-good');
   } else {
     deltaEl.textContent = '';
@@ -179,11 +179,6 @@ async function loadDashboard() {
   renderDailySection(ov.daily);
   renderMerchants(ov.topMerchants);
   renderRecent(start, end);
-}
-
-function comparableSpent(monthly, range) {
-  if (range !== 'this-month' || monthly.length < 2) return null;
-  return monthly[monthly.length - 2]?.spent ?? null;
 }
 
 function renderDonutSection(byCategory) {
