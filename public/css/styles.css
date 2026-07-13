@@ -442,7 +442,13 @@ h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
 .cat-options { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
 .check-row { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
 .check-row input { accent-color: var(--accent); width: 15px; height: 15px; }
-.modal-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 6px; }
+.form-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--ink-2); }
+.form-grid .select, .form-grid input { width: 100%; }
+.form-wide { grid-column: span 2; }
+.dir-toggle { display: flex; gap: 6px; }
 
 /* ---------- toasts ---------- */
 .toast-stack {

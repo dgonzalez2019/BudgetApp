@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import crypto from 'node:crypto';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -97,6 +98,36 @@ app.get('/api/transactions', (req, res) => {
     ${sql} ORDER BY t.date DESC, t.id DESC LIMIT ? OFFSET ?`).all(...params, limit, offset);
 
   res.json({ total, transactions: rows });
+});
+
+// Manual entries: for movements banks don't report (CD deposits, cash, …).
+app.post('/api/transactions', (req, res) => {
+  const { account_id, date, name, amount, category } = req.body || {};
+  if (!db.prepare('SELECT id FROM accounts WHERE id = ?').get(account_id)) {
+    return res.status(400).json({ error: 'Unknown account' });
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return res.status(400).json({ error: 'Invalid date' });
+  const amt = Number(amount);
+  if (!Number.isFinite(amt) || amt === 0) return res.status(400).json({ error: 'Invalid amount' });
+  const desc = String(name || '').trim();
+  if (!desc) return res.status(400).json({ error: 'Description required' });
+  if (!CATEGORIES.includes(category)) return res.status(400).json({ error: 'Unknown category' });
+
+  const id = `manual-${crypto.randomUUID()}`;
+  db.prepare(`INSERT INTO transactions
+    (id, account_id, date, name, merchant_name, amount, category, category_source, plaid_category, pending, is_demo)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', NULL, 0, 0)`)
+    .run(id, account_id, date, desc, desc, amt, category);
+  res.json({ ok: true, id });
+});
+
+// Only manual entries are deletable — synced data is the bank's record.
+app.delete('/api/transactions/:id', (req, res) => {
+  if (!req.params.id.startsWith('manual-')) {
+    return res.status(400).json({ error: 'Only manually added transactions can be deleted' });
+  }
+  db.prepare('DELETE FROM transactions WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
 });
 
 app.patch('/api/transactions/:id', (req, res) => {

@@ -156,6 +156,7 @@
               <input type="search" id="txn-search" placeholder="Search merchants…" autocomplete="off">
             </div>
             <select id="txn-account-filter" class="select"><option value="">All accounts</option></select>
+            <button class="primary-btn" id="add-txn-btn">+ Add</button>
           </div>
         </header>
         <div class="cat-chips" id="txn-cat-chips"></div>
@@ -226,6 +227,41 @@
       <div class="modal-actions">
         <button class="ghost-btn" id="cat-modal-cancel">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Add manual transaction -->
+  <div class="modal-backdrop hidden" id="add-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="add-modal-title">
+      <h3 id="add-modal-title">Add transaction</h3>
+      <p class="muted">For movements your bank doesn't report — CD deposits, cash, etc.</p>
+      <form id="add-form">
+        <div class="form-grid">
+          <label>Account
+            <select id="add-account" class="select"></select>
+          </label>
+          <label>Date
+            <input type="date" id="add-date" class="select" required>
+          </label>
+          <label class="form-wide">Description
+            <input type="text" id="add-name" class="select" placeholder="e.g. Transfer from Checking" required>
+          </label>
+          <label>Amount ($)
+            <input type="number" id="add-amount" class="select" min="0.01" step="0.01" placeholder="0.00" required>
+          </label>
+          <label>Direction
+            <div class="dir-toggle" role="group" aria-label="Money direction">
+              <button type="button" id="dir-out" class="chip active">Money out</button>
+              <button type="button" id="dir-in" class="chip">Money in</button>
+            </div>
+          </label>
+        </div>
+        <div class="cat-options" id="add-cat-options"></div>
+        <div class="modal-actions">
+          <button type="button" class="ghost-btn" id="add-cancel">Cancel</button>
+          <button type="submit" class="primary-btn">Add transaction</button>
+        </div>
+      </form>
     </div>
   </div>
 

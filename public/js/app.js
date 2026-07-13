@@ -317,6 +317,12 @@ function txnRow(t) {
     p.textContent = 'pending';
     merch.appendChild(p);
   }
+  if (t.id.startsWith('manual-')) {
+    const m = document.createElement('span');
+    m.className = 'txn-pending';
+    m.textContent = 'manual';
+    merch.appendChild(m);
+  }
 
   const cat = document.createElement('td');
   const pill = document.createElement('button');
@@ -441,6 +447,23 @@ function openCategoryModal(txn) {
     });
     opts.appendChild(chip);
   }
+  // manually added entries can be removed
+  const actions = $('#cat-modal .modal-actions');
+  actions.querySelector('.delete-txn')?.remove();
+  if (txn.id.startsWith('manual-')) {
+    const del = document.createElement('button');
+    del.className = 'ghost-btn danger delete-txn';
+    del.textContent = 'Delete transaction';
+    del.addEventListener('click', async () => {
+      try {
+        await api(`/api/transactions/${encodeURIComponent(txn.id)}`, { method: 'DELETE' });
+        modal.classList.add('hidden');
+        toast('Transaction deleted');
+        loadTransactions(true);
+      } catch (err) { toast(err.message, '⚠️'); }
+    });
+    actions.prepend(del);
+  }
   modal.classList.remove('hidden');
 }
 $('#cat-modal-cancel').addEventListener('click', () => $('#cat-modal').classList.add('hidden'));
@@ -449,6 +472,80 @@ $('#cat-modal').addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') $('#cat-modal').classList.add('hidden');
+});
+
+/* ---------------- add manual transaction ---------------- */
+let addDirection = 'out';
+let addCategory = 'Transfers';
+
+async function openAddModal() {
+  if (state.accounts.length === 0) {
+    const { accounts } = await api('/api/accounts');
+    state.accounts = accounts;
+  }
+  const sel = $('#add-account');
+  sel.replaceChildren();
+  for (const a of state.accounts) {
+    const opt = document.createElement('option');
+    opt.value = a.id;
+    opt.textContent = `${a.name}${a.mask ? ' ··' + a.mask : ''}`;
+    sel.appendChild(opt);
+  }
+  const today = new Date();
+  $('#add-date').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  $('#add-name').value = '';
+  $('#add-amount').value = '';
+  renderAddCategoryChips();
+  $('#add-modal').classList.remove('hidden');
+}
+
+function renderAddCategoryChips() {
+  const opts = $('#add-cat-options');
+  opts.replaceChildren();
+  for (const c of state.categories) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip' + (addCategory === c ? ' active' : '');
+    chip.textContent = `${catIcon(c)} ${c}`;
+    chip.addEventListener('click', () => { addCategory = c; renderAddCategoryChips(); });
+    opts.appendChild(chip);
+  }
+}
+
+function setAddDirection(dir) {
+  addDirection = dir;
+  $('#dir-out').classList.toggle('active', dir === 'out');
+  $('#dir-in').classList.toggle('active', dir === 'in');
+}
+$('#dir-out').addEventListener('click', () => setAddDirection('out'));
+$('#dir-in').addEventListener('click', () => setAddDirection('in'));
+$('#add-txn-btn').addEventListener('click', openAddModal);
+$('#add-cancel').addEventListener('click', () => $('#add-modal').classList.add('hidden'));
+$('#add-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) $('#add-modal').classList.add('hidden');
+});
+
+$('#add-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const value = Math.abs(Number($('#add-amount').value));
+  if (!value) { toast('Enter an amount', '⚠️'); return; }
+  try {
+    await api('/api/transactions', {
+      method: 'POST',
+      body: {
+        account_id: $('#add-account').value,
+        date: $('#add-date').value,
+        name: $('#add-name').value.trim(),
+        amount: addDirection === 'out' ? value : -value,
+        category: addCategory,
+      },
+    });
+    $('#add-modal').classList.add('hidden');
+    toast('Transaction added');
+    loadTransactions(true);
+  } catch (err) {
+    toast(err.message, '⚠️');
+  }
 });
 
 /* ================= BUDGETS ================= */
