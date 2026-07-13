@@ -565,7 +565,7 @@ function applyCategoryMeta(s) {
   if (s.categories?.length) state.categories = s.categories;
   state.catMeta = {};
   for (const c of s.categoryMeta || []) {
-    if (!c.is_builtin) state.catMeta[c.name] = { icon: c.icon, color: c.color };
+    if (!c.is_builtin) state.catMeta[c.name] = { icon: c.icon, color: c.color, excluded: Boolean(c.excluded) };
   }
 }
 async function refreshCategories() {
@@ -577,6 +577,7 @@ function openNewCategoryModal(onCreate) {
   newcatOnCreate = onCreate || null;
   $('#newcat-name').value = '';
   $('#newcat-icon').value = '';
+  $('#newcat-excluded').checked = false;
   $('#newcat-modal').classList.remove('hidden');
   $('#newcat-name').focus();
 }
@@ -589,7 +590,11 @@ $('#newcat-form').addEventListener('submit', async (e) => {
   try {
     const res = await api('/api/categories', {
       method: 'POST',
-      body: { name: $('#newcat-name').value.trim(), icon: $('#newcat-icon').value.trim() },
+      body: {
+        name: $('#newcat-name').value.trim(),
+        icon: $('#newcat-icon').value.trim(),
+        excluded: $('#newcat-excluded').checked,
+      },
     });
     await refreshCategories();
     $('#newcat-modal').classList.add('hidden');
@@ -673,6 +678,7 @@ function budgetCard(b) {
   const name = document.createElement('span');
   name.className = 'budget-name';
   name.textContent = `${catIcon(b.category)} ${b.category}`;
+  const excluded = state.catMeta[b.category]?.excluded;
   const edit = document.createElement('div');
   edit.className = 'budget-edit';
   if (isCustomCat(b.category)) {
@@ -702,9 +708,42 @@ function budgetCard(b) {
   };
   input.addEventListener('change', save);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
-  edit.appendChild(input);
+  if (!excluded) edit.appendChild(input);
   top.append(dot, name, edit);
   card.appendChild(top);
+
+  // custom categories can be flipped between spending and not-spending
+  if (isCustomCat(b.category)) {
+    const row = document.createElement('label');
+    row.className = 'check-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !excluded;
+    const text = document.createElement('span');
+    text.textContent = 'Counts as spending';
+    cb.addEventListener('change', async () => {
+      try {
+        await api(`/api/categories/${encodeURIComponent(b.category)}`, {
+          method: 'PATCH', body: { excluded: !cb.checked },
+        });
+        await refreshCategories();
+        toast(cb.checked
+          ? `${b.category} now counts as spending`
+          : `${b.category} is now excluded from spending stats`);
+        loadBudgets();
+      } catch (err) { toast(err.message, '⚠️'); }
+    });
+    row.append(cb, text);
+    card.appendChild(row);
+  }
+
+  if (excluded) {
+    const note = document.createElement('div');
+    note.className = 'muted';
+    note.textContent = 'Excluded from spending, income, charts, and budgets — transactions stay visible in the list.';
+    card.appendChild(note);
+    return card;
+  }
 
   if (b.monthly_limit > 0) {
     card.appendChild(buildMeter(b.spent, b.monthly_limit));

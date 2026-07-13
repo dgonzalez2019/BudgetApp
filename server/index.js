@@ -4,7 +4,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import db from './db.js';
-import { getCategories, categoryNames, isCategory, recategorizeAuto } from './categorizer.js';
+import { getCategories, categoryNames, isCategory, recategorizeAuto, SPEND_FILTER } from './categorizer.js';
 import { seedDemoData, clearDemoData } from './demo.js';
 import * as plaid from './plaid.js';
 import { authGuard, registerAuthRoutes, authEnabled } from './auth.js';
@@ -45,7 +45,7 @@ app.get('/api/overview', (req, res) => {
 
   const totals = db.prepare(`
     SELECT
-      COALESCE(SUM(CASE WHEN amount > 0 AND category NOT IN ('Income', 'Transfers') THEN amount END), 0) AS spent,
+      COALESCE(SUM(CASE WHEN ${SPEND_FILTER} THEN amount END), 0) AS spent,
       COALESCE(-SUM(CASE WHEN category = 'Income' THEN amount END), 0) AS income,
       COUNT(*) AS count
     FROM transactions WHERE date >= ? AND date <= ?`).get(start, end);
@@ -53,33 +53,33 @@ app.get('/api/overview', (req, res) => {
   const byCategory = db.prepare(`
     SELECT category, SUM(amount) AS total, COUNT(*) AS count
     FROM transactions
-    WHERE date >= ? AND date <= ? AND amount > 0 AND category NOT IN ('Income', 'Transfers')
+    WHERE date >= ? AND date <= ? AND ${SPEND_FILTER}
     GROUP BY category ORDER BY total DESC`).all(start, end);
 
   // Last 6 whole months of spending vs income, independent of the selected range.
   const monthly = db.prepare(`
     SELECT substr(date, 1, 7) AS month,
-      COALESCE(SUM(CASE WHEN amount > 0 AND category NOT IN ('Income', 'Transfers') THEN amount END), 0) AS spent,
+      COALESCE(SUM(CASE WHEN ${SPEND_FILTER} THEN amount END), 0) AS spent,
       COALESCE(-SUM(CASE WHEN category = 'Income' THEN amount END), 0) AS income
     FROM transactions
     WHERE date >= date('now', 'start of month', '-5 months')
     GROUP BY month ORDER BY month`).all();
 
   const daily = db.prepare(`
-    SELECT date, COALESCE(SUM(CASE WHEN amount > 0 AND category NOT IN ('Income', 'Transfers') THEN amount END), 0) AS spent
+    SELECT date, COALESCE(SUM(CASE WHEN ${SPEND_FILTER} THEN amount END), 0) AS spent
     FROM transactions WHERE date >= ? AND date <= ?
     GROUP BY date ORDER BY date`).all(start, end);
 
   const topMerchants = db.prepare(`
     SELECT COALESCE(merchant_name, name) AS merchant, SUM(amount) AS total, COUNT(*) AS count
     FROM transactions
-    WHERE date >= ? AND date <= ? AND amount > 0 AND category NOT IN ('Income', 'Transfers')
+    WHERE date >= ? AND date <= ? AND ${SPEND_FILTER}
     GROUP BY merchant ORDER BY total DESC LIMIT 6`).all(start, end);
 
   // Rolling-month pace: the past month vs the month before it.
   const now = new Date();
   const spentBetween = db.prepare(`
-    SELECT COALESCE(SUM(CASE WHEN amount > 0 AND category NOT IN ('Income', 'Transfers') THEN amount END), 0) AS s
+    SELECT COALESCE(SUM(CASE WHEN ${SPEND_FILTER} THEN amount END), 0) AS s
     FROM transactions WHERE date >= ? AND date <= ?`);
   const shift = (months, days = 0) => new Date(now.getFullYear(), now.getMonth() + months, now.getDate() + days);
   const monthToDate = {
@@ -181,7 +181,7 @@ app.get('/api/budgets', (req, res) => {
   const monthStart = new Date().toISOString().slice(0, 8) + '01';
   const spent = db.prepare(`
     SELECT category, SUM(amount) AS total FROM transactions
-    WHERE date >= ? AND amount > 0 AND category NOT IN ('Income', 'Transfers')
+    WHERE date >= ? AND ${SPEND_FILTER}
     GROUP BY category`).all(monthStart);
   const spentMap = Object.fromEntries(spent.map((s) => [s.category, s.total]));
   res.json({
@@ -230,9 +230,21 @@ app.post('/api/categories', (req, res) => {
   }
   const customCount = db.prepare('SELECT COUNT(*) c FROM categories WHERE is_builtin = 0').get().c;
   const color = CUSTOM_COLORS[customCount % CUSTOM_COLORS.length];
-  db.prepare('INSERT INTO categories (name, icon, color, is_builtin, position) VALUES (?, ?, ?, 0, ?)')
-    .run(name, icon, color, 10 + customCount);
-  res.json({ ok: true, name, icon, color });
+  const excluded = req.body?.excluded ? 1 : 0;
+  db.prepare('INSERT INTO categories (name, icon, color, is_builtin, position, excluded) VALUES (?, ?, ?, 0, ?, ?)')
+    .run(name, icon, color, 10 + customCount, excluded);
+  res.json({ ok: true, name, icon, color, excluded });
+});
+
+// Toggle whether a custom category counts as spending.
+app.patch('/api/categories/:name', (req, res) => {
+  const cat = db.prepare('SELECT * FROM categories WHERE name = ?').get(req.params.name);
+  if (!cat) return res.status(404).json({ error: 'Not found' });
+  if (cat.is_builtin) return res.status(400).json({ error: 'Built-in categories cannot be changed' });
+  const excluded = req.body?.excluded ? 1 : 0;
+  db.prepare('UPDATE categories SET excluded = ? WHERE name = ?').run(excluded, cat.name);
+  if (excluded) db.prepare('DELETE FROM budgets WHERE category = ?').run(cat.name);
+  res.json({ ok: true, excluded });
 });
 
 app.delete('/api/categories/:name', (req, res) => {

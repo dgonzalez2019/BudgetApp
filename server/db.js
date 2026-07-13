@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS categories (
   icon TEXT DEFAULT '🏷️',
   color TEXT,                      -- NULL for built-ins (they use theme CSS slots)
   is_builtin INTEGER DEFAULT 0,
-  position INTEGER
+  position INTEGER,
+  excluded INTEGER DEFAULT 0       -- 1 = not counted as spending (reimbursements, card payments)
 );
 
 CREATE TABLE IF NOT EXISTS rules (
@@ -75,5 +76,8 @@ CREATE TABLE IF NOT EXISTS rules (
   created_at TEXT DEFAULT (datetime('now'))
 );
 `);
+
+// migrate databases created before the excluded flag existed
+try { db.exec('ALTER TABLE categories ADD COLUMN excluded INTEGER DEFAULT 0'); } catch { /* column exists */ }
 
 export default db;

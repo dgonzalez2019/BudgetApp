@@ -18,10 +18,16 @@ const BUILTIN_CATEGORIES = [
 {
   const seed = db.prepare('INSERT OR IGNORE INTO categories (name, icon, color, is_builtin, position) VALUES (?, ?, NULL, 1, ?)');
   for (const [name, icon, position] of BUILTIN_CATEGORIES) seed.run(name, icon, position);
+  db.prepare("UPDATE categories SET excluded = 1 WHERE name IN ('Transfers', 'Income')").run();
 }
 
+// SQL fragment for "counts as spending": positive amount, not income, not a
+// transfer, and not in a category the user excluded (e.g. card repayments).
+export const SPEND_FILTER =
+  "amount > 0 AND category NOT IN (SELECT name FROM categories WHERE excluded = 1)";
+
 export function getCategories() {
-  return db.prepare('SELECT name, icon, color, is_builtin, position FROM categories ORDER BY position, name').all();
+  return db.prepare('SELECT name, icon, color, is_builtin, position, excluded FROM categories ORDER BY position, name').all();
 }
 export function categoryNames() {
   return getCategories().map((c) => c.name);
