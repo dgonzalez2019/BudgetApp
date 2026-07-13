@@ -30,6 +30,13 @@ export function isCategory(name) {
   return Boolean(db.prepare('SELECT 1 FROM categories WHERE name = ?').get(name));
 }
 
+// Detailed Plaid categories that override the primary mapping.
+// A credit-card payment settles spending that was already counted when the
+// purchases happened — counting it again would double-count.
+const PLAID_DETAILED_MAP = {
+  LOAN_PAYMENTS_CREDIT_CARD_PAYMENT: 'Transfers',
+};
+
 // Plaid personal_finance_category.primary -> app category
 const PLAID_PFC_MAP = {
   FOOD_AND_DRINK: 'Food & Dining',
@@ -101,8 +108,15 @@ export function categorize({ name, merchant_name, amount, plaidPrimary }) {
   for (const [kw, cat] of BUILTIN_RULES) {
     if (text.includes(kw)) return { category: cat, source: 'auto' };
   }
-  if (plaidPrimary && PLAID_PFC_MAP[plaidPrimary]) {
-    return { category: PLAID_PFC_MAP[plaidPrimary], source: 'auto' };
+  if (plaidPrimary) {
+    // plaidPrimary may be a detailed code (e.g. FOOD_AND_DRINK_RESTAURANTS)
+    // or a bare primary (FOOD_AND_DRINK) on older rows.
+    if (PLAID_DETAILED_MAP[plaidPrimary]) {
+      return { category: PLAID_DETAILED_MAP[plaidPrimary], source: 'auto' };
+    }
+    const primary = Object.keys(PLAID_PFC_MAP)
+      .find((k) => plaidPrimary === k || plaidPrimary.startsWith(k + '_'));
+    if (primary) return { category: PLAID_PFC_MAP[primary], source: 'auto' };
   }
   if (amount < 0) return { category: 'Income', source: 'auto' };
   return { category: 'Other', source: 'auto' };

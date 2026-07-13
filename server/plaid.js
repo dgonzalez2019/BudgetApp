@@ -84,7 +84,10 @@ export async function syncItem(itemId) {
     const res = await api.transactionsSync({ access_token: item.access_token, cursor, count: 500 });
     const d = res.data;
     for (const t of [...d.added, ...d.modified]) {
-      const plaidPrimary = t.personal_finance_category?.primary || null;
+      // Prefer the detailed category — it separates credit-card payments
+      // (a transfer, already counted at purchase time) from real loan payments.
+      const plaidPrimary = t.personal_finance_category?.detailed
+        || t.personal_finance_category?.primary || null;
       // Keep a category the user set by hand, even if Plaid modifies the transaction.
       const existing = manualCat.get(t.transaction_id);
       const { category, source } = existing
