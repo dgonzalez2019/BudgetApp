@@ -67,7 +67,8 @@ const BUILTIN_RULES = [
   ['airline', 'Travel'], ['delta air', 'Travel'], ['united air', 'Travel'],
   ['southwest', 'Travel'], ['airbnb', 'Travel'], ['marriott', 'Travel'],
   ['hilton', 'Travel'], ['hotel', 'Travel'], ['expedia', 'Travel'],
-  ['transfer', 'Transfers'], ['xfer', 'Transfers'],
+  // Transfers are matched via Plaid's TRANSFER_IN/TRANSFER_OUT classification only —
+  // a bare "transfer" keyword over-matches real spending (wires, bill-pay descriptions, …).
   ['payroll', 'Income'], ['direct dep', 'Income'], ['deposit', 'Income'],
 ];
 
