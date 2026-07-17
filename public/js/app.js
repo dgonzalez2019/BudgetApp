@@ -351,7 +351,19 @@ function txnRow(t) {
 
   const acct = document.createElement('td');
   acct.className = 'txn-account';
-  acct.textContent = `${t.account_name}${t.mask ? ' ··' + t.mask : ''}`;
+  const acctWrap = document.createElement('span');
+  acctWrap.className = 'acct-wrap';
+  const acctName = document.createElement('span');
+  acctName.className = 'acct-name';
+  acctName.textContent = t.account_name;
+  acctWrap.appendChild(acctName);
+  if (t.mask) {
+    const acctMask = document.createElement('span');
+    acctMask.className = 'acct-mask';
+    acctMask.textContent = `··${t.mask}`;
+    acctWrap.appendChild(acctMask);
+  }
+  acct.appendChild(acctWrap);
 
   const amt = document.createElement('td');
   amt.className = 'num' + (t.amount < 0 ? ' amt-in' : '');
