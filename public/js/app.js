@@ -313,6 +313,15 @@ function txnRow(t) {
   const merch = document.createElement('td');
   merch.className = 'txn-merchant';
   merch.textContent = t.merchant_name || t.name;
+  // full bank description under the cleaned-up merchant name, when they differ
+  const raw = (t.name || '').trim();
+  const clean = (t.merchant_name || '').trim();
+  if (clean && raw && raw.toLowerCase() !== clean.toLowerCase()) {
+    const desc = document.createElement('div');
+    desc.className = 'txn-desc';
+    desc.textContent = raw;
+    merch.appendChild(desc);
+  }
   if (t.pending) {
     const p = document.createElement('span');
     p.className = 'txn-pending';
@@ -327,6 +336,7 @@ function txnRow(t) {
   }
 
   const cat = document.createElement('td');
+  cat.className = 'txn-cat';
   const pill = document.createElement('button');
   pill.className = 'cat-pill';
   pill.title = 'Click to change category';
