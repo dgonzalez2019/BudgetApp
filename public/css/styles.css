@@ -471,6 +471,24 @@ h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
 .toast .t-icon { font-size: 16px; }
 
 /* ---------- responsive ---------- */
+/* Tablet and up: fixed column widths so the amount always fits; long merchant
+   descriptions truncate with an ellipsis instead of pushing columns off-screen. */
+@media (min-width: 641px) {
+  .txn-table { table-layout: fixed; }
+  td.txn-date, .txn-table th:nth-child(1) { width: 92px; }
+  td.txn-cat, .txn-table th:nth-child(3) { width: 190px; }
+  td.txn-account, .txn-table th:nth-child(4) { width: 160px; }
+  .txn-table .num, .txn-table th:nth-child(5) { width: 108px; }
+  td.txn-merchant, td.txn-account, td.txn-cat {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .table-card, #recent-txns { overflow-x: auto; }
+}
+/* mid widths (iPad portrait): drop the account column so amounts never clip */
+@media (min-width: 641px) and (max-width: 1020px) {
+  td.txn-account, .txn-table th:nth-child(4) { display: none; }
+}
+
 /* Phones: the transaction table becomes stacked cards — five columns can't fit,
    and a clipped table hides data. */
 @media (max-width: 640px) {
