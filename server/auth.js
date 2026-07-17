@@ -77,7 +77,7 @@ export function isAuthenticated(req) {
 /** Everything except the login flow and health check requires a session. */
 export function authGuard(req, res, next) {
   if (!authEnabled()) return next();
-  if (req.path === '/healthz' || req.path === '/login' || req.path === '/api/login') return next();
+  if (['/healthz', '/login', '/api/login', '/privacy'].includes(req.path)) return next();
   if (isAuthenticated(req)) return next();
   if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Not signed in' });
   return res.redirect('/login');

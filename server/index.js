@@ -15,6 +15,8 @@ app.set('trust proxy', 1); // secure cookies behind cloud HTTPS proxies
 app.use(express.json());
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
+// Public: bank/OAuth registrations (e.g. Amex via Plaid) require a reachable privacy policy.
+app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'privacy.html')));
 registerAuthRoutes(app, path.join(__dirname, '..', 'public', 'login.html'));
 app.use(authGuard);
 app.use(express.static(path.join(__dirname, '..', 'public')));

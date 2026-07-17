@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>Privacy Policy — BudgetApp</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>">
+  <style>
+    :root { --page: #f9f9f7; --ink: #0b0b0b; --ink-2: #52514e; --border: rgba(11,11,11,.10); }
+    @media (prefers-color-scheme: dark) {
+      :root { --page: #0d0d0d; --ink: #fff; --ink-2: #c3c2b7; --border: rgba(255,255,255,.10); }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--page); color: var(--ink); line-height: 1.6;
+      max-width: 720px; margin: 0 auto; padding: 48px 24px 96px;
+    }
+    h1 { font-size: 26px; letter-spacing: -.02em; margin-bottom: 6px; }
+    .updated { color: var(--ink-2); font-size: 13.5px; margin-bottom: 32px; }
+    h2 { font-size: 17px; margin: 28px 0 8px; }
+    p, li { color: var(--ink-2); font-size: 15px; }
+    ul { padding-left: 22px; margin: 8px 0; }
+    a { color: inherit; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+  </style>
+</head>
+<body>
+  <h1>💸 BudgetApp Privacy Policy</h1>
+  <p class="updated">Last updated: July 13, 2026</p>
+
+  <p>BudgetApp is a personal budgeting application operated by its owner for personal, non-commercial use. It is not offered as a service to the public.</p>
+
+  <h2>What data the app handles</h2>
+  <ul>
+    <li><strong>Financial account data</strong> — account names, balances, and transaction history for accounts the owner connects, retrieved through <a href="https://plaid.com">Plaid</a>, a regulated data network used by many financial apps.</li>
+    <li><strong>Categorization data</strong> — categories, budgets, and rules the owner creates inside the app.</li>
+  </ul>
+
+  <h2>How bank connections work</h2>
+  <ul>
+    <li>Bank sign-in happens on the bank's own website or through Plaid's secure interface. <strong>BudgetApp never sees or stores bank usernames or passwords.</strong></li>
+    <li>The app stores only a Plaid access token and the account/transaction data returned by the Plaid API.</li>
+  </ul>
+
+  <h2>Where data lives</h2>
+  <ul>
+    <li>All data is stored in a private, password-protected database controlled by the owner.</li>
+    <li>Data is encrypted in transit (HTTPS/TLS) and at rest by the hosting provider.</li>
+  </ul>
+
+  <h2>What the app does <em>not</em> do</h2>
+  <ul>
+    <li>No selling, renting, or sharing of data with any third party.</li>
+    <li>No advertising, analytics trackers, or marketing use of any kind.</li>
+    <li>No access by anyone other than the owner.</li>
+  </ul>
+
+  <h2>Data retention &amp; deletion</h2>
+  <p>Data is retained only as long as the owner keeps it. Unlinking an account inside the app deletes its transactions from the database, and bank access can be revoked at any time through the bank's third-party access settings or the <a href="https://my.plaid.com">Plaid Portal</a>.</p>
+
+  <hr>
+  <p>Questions about this policy can be sent to the app's owner and sole operator.</p>
+</body>
+</html>
